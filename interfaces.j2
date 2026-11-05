@@ -1,0 +1,40 @@
+! ----- Interfaces -----
+{#- Port-channels are just interfaces named Port-ChannelN with "members". -#}
+{#- "mlag: <id>" is only applied on core switches. -#}
+{%- for i in interfaces | default([]) %}
+interface {{ i.name }}
+{%- if i.description is defined %}
+   description {{ i.description }}
+{%- endif %}
+{%- if i.enabled | default(true) == false %}
+   shutdown
+{%- endif %}
+{%- if i.mode | default('access') == 'trunk' %}
+   switchport mode trunk
+{%- if i.vlans is defined %}
+   switchport trunk allowed vlan {{ i.vlans | join(',') }}
+{%- endif %}
+{%- if i.native_vlan is defined %}
+   switchport trunk native vlan {{ i.native_vlan }}
+{%- endif %}
+{%- else %}
+   switchport mode access
+{%- if i.vlan is defined %}
+   switchport access vlan {{ i.vlan }}
+{%- endif %}
+{%- if i.edge | default(false) %}
+   spanning-tree portfast
+   spanning-tree bpduguard enable
+{%- endif %}
+{%- endif %}
+{%- if role == 'core' and i.mlag is defined %}
+   mlag {{ i.mlag }}
+{%- endif %}
+!
+{%- for m in i.members | default([]) %}
+interface {{ m }}
+   description Member of {{ i.name }}
+   channel-group {{ i.name | replace('Port-Channel', '') }} mode {{ i.lacp_mode | default('active') }}
+!
+{%- endfor %}
+{%- endfor %}

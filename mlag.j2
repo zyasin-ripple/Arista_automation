@@ -1,0 +1,36 @@
+! ----- MLAG -----
+{%- if role == 'core' and mlag is defined %}
+{%- set pv = mlag.peer_vlan | default(4094) %}
+{%- set pl = mlag.peer_link.id %}
+vlan {{ pv }}
+   name MLAG-PEER
+   trunk group MLAG
+!
+no spanning-tree vlan-id {{ pv }}
+!
+interface Port-Channel{{ pl }}
+   description MLAG peer-link
+   switchport mode trunk
+   switchport trunk group MLAG
+!
+{%- for m in mlag.peer_link.members | default([]) %}
+interface {{ m }}
+   description MLAG peer-link member
+   channel-group {{ pl }} mode active
+!
+{%- endfor %}
+interface Vlan{{ pv }}
+   description MLAG peer
+   no autostate
+   ip address {{ mlag.local_ip }}
+!
+mlag configuration
+   domain-id {{ mlag.domain_id }}
+   local-interface Vlan{{ pv }}
+   peer-address {{ mlag.peer_ip }}
+   peer-link Port-Channel{{ pl }}
+   reload-delay mlag {{ mlag.reload_delay_mlag | default(300) }}
+   reload-delay non-mlag {{ mlag.reload_delay_non_mlag | default(330) }}
+{%- else %}
+! MLAG not applicable (role: {{ role | default('access') }})
+{%- endif %}

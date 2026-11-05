@@ -1,0 +1,10 @@
+! ----- SNMP -----
+{%- if snmp is defined %}
+{%- if snmp.location is defined %}
+snmp-server location {{ snmp.location }}
+{%- endif %}
+{%- if snmp.contact is defined %}
+snmp-server contact {{ snmp.contact }}
+{%- endif %}
+snmp-server community {{ snmp.community }} ro
+{%- endif %}

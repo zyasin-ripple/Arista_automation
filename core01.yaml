@@ -1,0 +1,64 @@
+hostname: core-01
+role: core
+domain_name: example.net
+
+name_servers: [10.0.0.53, 10.0.0.54]
+ntp_servers: [10.0.0.123]
+syslog_hosts: [10.0.0.200]
+
+users:
+  - name: netadmin
+    password_hash: "$6$REPLACE_ME"
+
+mgmt:
+  interface: Management1
+  address: 10.0.0.21/24
+  gateway: 10.0.0.1
+  vrf: MGMT
+
+vrfs:
+  - {name: MGMT, ip_routing: false}
+  - {name: CORP}
+
+ospf:
+  router_id: 10.255.0.1
+
+vlans:
+  # No vrf = default table, joins OSPF process 1
+  - {name: DATA,  id: 10, description: User data, ip: 10.10.10.2/24, virtual_ip: 10.10.10.1, ospf_passive: true}
+  # vrf set = SVI goes into that VRF, OSPF runs in a per-VRF process
+  - {name: VOICE, id: 20, description: Phones, ip: 10.10.20.2/24, virtual_ip: 10.10.20.1, vrf: CORP, ospf_area: 0.0.0.1}
+  # SVI present but opted out of OSPF
+  - {name: GUEST, id: 30, description: Guest, ip: 10.10.30.2/24, virtual_ip: 10.10.30.1, ospf: false}
+  # no ip = Layer 2 only
+  - {name: INFRA, id: 99}
+
+# Core switches get the MLAG domain + "mlag:" IDs on port-channels
+mlag:
+  domain_id: CORE-MLAG
+  peer_vlan: 4094
+  local_ip: 10.255.255.1/31      # core-02 uses 10.255.255.2/31
+  peer_ip: 10.255.255.2          # core-02 uses 10.255.255.1
+  peer_link:
+    id: 1000
+    members: [Ethernet47, Ethernet48]
+
+interfaces:
+  - name: Port-Channel10
+    description: Downlink to sw-access-01
+    mode: trunk
+    vlans: [10, 20, 30, 99]
+    native_vlan: 99
+    mlag: 10
+    members: [Ethernet1]
+  - {name: Ethernet10, description: Server, mode: access, vlan: 10, edge: true}
+
+static_routes:
+  - {prefix: 192.168.0.0/16, next_hop: 10.10.10.254}
+
+stp: {priority: 4096}
+
+snmp:
+  community: public-ro
+  location: DC1
+  contact: noc@example.net

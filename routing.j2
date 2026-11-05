@@ -1,0 +1,4 @@
+! ----- Static routes -----
+{%- for r in static_routes | default([]) %}
+ip route {{ 'vrf ' ~ r.vrf ~ ' ' if r.vrf is defined }}{{ r.prefix }} {{ r.next_hop }}
+{%- endfor %}
