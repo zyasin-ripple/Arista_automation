@@ -1,0 +1,12 @@
+! ----- Management -----
+{%- if mgmt is defined %}
+interface {{ mgmt.interface | default('Management1') }}
+{%- if mgmt.vrf is defined %}
+   vrf {{ mgmt.vrf }}
+{%- endif %}
+   ip address {{ mgmt.address }}
+!
+{%- if mgmt.gateway is defined %}
+ip route {{ 'vrf ' ~ mgmt.vrf ~ ' ' if mgmt.vrf is defined }}0.0.0.0/0 {{ mgmt.gateway }}
+{%- endif %}
+{%- endif %}

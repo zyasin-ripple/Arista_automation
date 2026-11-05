@@ -1,0 +1,71 @@
+! ----- VRFs -----
+{#- SVIs that take part in OSPF: any VLAN with an "ip", unless "ospf: false" -#}
+{%- set svis = vlans | default([]) | selectattr('ip', 'defined') | rejectattr('ospf', 'sameas', false) | list %}
+{%- set ospf_cfg = ospf | default({}) %}
+{%- for r in vrfs | default([]) %}
+vrf instance {{ r.name }}
+{%- if r.rd is defined %}
+   rd {{ r.rd }}
+{%- endif %}
+!
+{%- if r.ip_routing | default(true) %}
+ip routing vrf {{ r.name }}
+!
+{%- endif %}
+{%- endfor %}
+
+! ----- VLANs -----
+{%- if role == 'core' and vlans | default([]) | selectattr('virtual_ip', 'defined') | list %}
+ip virtual-router mac-address {{ virtual_mac | default('00:1c:73:00:00:99') }}
+!
+{%- endif %}
+{%- for v in vlans | default([]) %}
+vlan {{ v.id }}
+   name {{ v.name }}
+!
+{%- if v.ip is defined %}
+interface Vlan{{ v.id }}
+{%- if v.description is defined %}
+   description {{ v.description }}
+{%- endif %}
+{#- No vrf defined = interface stays in the default table #}
+{%- if v.vrf is defined %}
+   vrf {{ v.vrf }}
+{%- endif %}
+   ip address {{ v.ip }}
+{%- if role == 'core' and v.virtual_ip is defined %}
+   ip virtual-router address {{ v.virtual_ip }}
+{%- endif %}
+{%- if v.ospf | default(true) %}
+   ip ospf area {{ v.ospf_area | default('0.0.0.0') }}
+{%- endif %}
+!
+{%- endif %}
+{%- endfor %}
+
+! ----- OSPF -----
+{#- Default table: one process. Each VRF with OSPF SVIs gets its own process. -#}
+{%- set default_svis = svis | rejectattr('vrf', 'defined') | list %}
+{%- if default_svis %}
+router ospf 1
+{%- if ospf_cfg.router_id is defined %}
+   router-id {{ ospf_cfg.router_id }}
+{%- endif %}
+{%- for v in default_svis if v.ospf_passive | default(false) %}
+   passive-interface Vlan{{ v.id }}
+{%- endfor %}
+!
+{%- endif %}
+{%- for r in vrfs | default([]) %}
+{%- set vrf_svis = svis | selectattr('vrf', 'defined') | selectattr('vrf', 'equalto', r.name) | list %}
+{%- if vrf_svis %}
+router ospf {{ r.ospf_process | default(loop.index + 1) }} vrf {{ r.name }}
+{%- if ospf_cfg.router_id is defined %}
+   router-id {{ ospf_cfg.router_id }}
+{%- endif %}
+{%- for v in vrf_svis if v.ospf_passive | default(false) %}
+   passive-interface Vlan{{ v.id }}
+{%- endfor %}
+!
+{%- endif %}
+{%- endfor %}

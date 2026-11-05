@@ -1,0 +1,44 @@
+hostname: sw-access-01
+role: access
+domain_name: example.net
+
+name_servers: [10.0.0.53, 10.0.0.54]
+ntp_servers: [10.0.0.123]
+syslog_hosts: [10.0.0.200]
+
+users:
+  - name: netadmin
+    password_hash: "$6$REPLACE_ME"
+
+mgmt:
+  interface: Management1
+  address: 10.0.0.31/24
+  gateway: 10.0.0.1
+  vrf: MGMT
+
+vrfs:
+  - {name: MGMT, ip_routing: false}
+
+# Access switches are Layer 2 only: no "ip" on the VLANs, no MLAG domain
+vlans:
+  - {name: DATA,  id: 10}
+  - {name: VOICE, id: 20}
+  - {name: GUEST, id: 30}
+  - {name: INFRA, id: 99}
+
+interfaces:
+  # LACP uplink split across core-01 and core-02 (they present as one MLAG pair)
+  - name: Port-Channel1
+    description: Uplink to core MLAG pair
+    mode: trunk
+    vlans: [10, 20, 30, 99]
+    native_vlan: 99
+    members: [Ethernet49, Ethernet50]
+  - {name: Ethernet1, description: User port, mode: access, vlan: 10, edge: true}
+  - {name: Ethernet2, description: User port, mode: access, vlan: 10, edge: true}
+  - {name: Ethernet3, description: Unused, mode: access, enabled: false}
+
+snmp:
+  community: public-ro
+  location: IDF-1
+  contact: noc@example.net

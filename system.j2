@@ -1,0 +1,23 @@
+! ----- System -----
+{#- Management VRF (if any) is applied to DNS, NTP and syslog -#}
+{%- set mvrf = (mgmt | default({})).vrf | default('') %}
+hostname {{ hostname }}
+{%- if domain_name is defined %}
+ip domain-name {{ domain_name }}
+{%- endif %}
+service routing protocols model multi-agent
+{%- if role == 'core' or ip_routing | default(false) %}
+ip routing
+{%- endif %}
+{%- for ns in name_servers | default([]) %}
+ip name-server {{ 'vrf ' ~ mvrf ~ ' ' if mvrf }}{{ ns }}
+{%- endfor %}
+{%- for s in ntp_servers | default([]) %}
+ntp server {{ 'vrf ' ~ mvrf ~ ' ' if mvrf }}{{ s }}
+{%- endfor %}
+{%- for h in syslog_hosts | default([]) %}
+logging {{ 'vrf ' ~ mvrf ~ ' ' if mvrf }}host {{ h }}
+{%- endfor %}
+{%- for u in users | default([]) %}
+username {{ u.name }} privilege 15 role {{ u.role | default('network-admin') }} secret sha512 {{ u.password_hash }}
+{%- endfor %}

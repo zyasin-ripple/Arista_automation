@@ -1,0 +1,17 @@
+! ===== Arista EOS config for {{ hostname }} ({{ role | default('access') }}) =====
+
+{% include 'system.j2' %}
+
+{% include 'vlans.j2' %}
+
+{% include 'management.j2' %}
+
+{% include 'interfaces.j2' %}
+
+{% include 'mlag.j2' %}
+
+{% include 'routing.j2' %}
+
+{% include 'protocols.j2' %}
+
+{% include 'snmp.j2' %}

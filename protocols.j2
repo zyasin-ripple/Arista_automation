@@ -1,0 +1,5 @@
+! ----- Protocols -----
+spanning-tree mode mstp
+{%- if stp is defined and stp.priority is defined %}
+spanning-tree mst 0 priority {{ stp.priority }}
+{%- endif %}
